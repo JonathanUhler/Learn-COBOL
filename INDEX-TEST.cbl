@@ -21,6 +21,7 @@
                05 FILE-MESSAGE PIC X(100).
                05 MESSAGE-ID PIC X(10).
        WORKING-STORAGE SECTION.
+           01 WS-COMMAND PIC X(5).
            01 WS-FILE-STATUS PIC 9(2).
            01 WS-FILE-PATH PIC X(100).
            01 WS-FILE-CONTENT.
@@ -30,26 +31,35 @@
        MAIN-PROCEDURE.
            DISPLAY "Enter file path..."
            ACCEPT WS-FILE-PATH
-            
-           DISPLAY "Enter search ID..."
-           ACCEPT WS-MESSAGE-ID
-           MOVE WS-MESSAGE-ID TO MESSAGE-ID
-           OPEN INPUT INDEX-FILE
-           READ INDEX-FILE INTO FILE-CONTENT
-               INVALID KEY DISPLAY "Search unknown..."
+           
+           DISPLAY "Enter a command. 'read' or 'write'"
+           ACCEPT WS-COMMAND
+
+           IF WS-COMMAND = "read"
+               DISPLAY "Enter search ID..."
+               ACCEPT WS-MESSAGE-ID
+               MOVE WS-MESSAGE-ID TO MESSAGE-ID
+               OPEN INPUT INDEX-FILE
+               READ INDEX-FILE INTO FILE-CONTENT
+                   INVALID KEY DISPLAY "Search unknown..."
+                   NOT INVALID KEY DISPLAY FILE-MESSAGE
+               END-READ
+               CLOSE INDEX-FILE
+
+           ELSE IF WS-COMMAND = "write"
+               DISPLAY "Enter message..."
+               ACCEPT FILE-MESSAGE
+               DISPLAY "Enter ID..."
+               ACCEPT MESSAGE-ID
+               OPEN I-O INDEX-FILE
+               WRITE FILE-CONTENT
+               INVALID KEY DISPLAY "Search write unknown..."
+                   REWRITE FILE-CONTENT
                NOT INVALID KEY DISPLAY FILE-MESSAGE
-              END-READ.
-           CLOSE INDEX-FILE
-       
-       
-      *>      DISPLAY "Enter message..."
-      *>      ACCEPT FILE-MESSAGE
-      *>      DISPLAY "Enter ID..."
-      *>      ACCEPT MESSAGE-ID
-      *>          OPEN I-O INDEX-FILE
-      *>          REWRITE FILE-CONTENT
-      *>          CLOSE INDEX-FILE
-            
+               END-REWRITE
+               END-WRITE
+               CLOSE INDEX-FILE
+           END-IF.
+
            STOP RUN.
        END PROGRAM INDEX-TEST.
-
