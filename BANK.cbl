@@ -39,13 +39,13 @@
            FD BALANCE-DETAILS.
                01 BALANCES.
                    05 BALANCE-ID PIC 9(8).
-                   05 BALANCE-AMMOUNT PIC S9(10).
+                   05 BALANCE-AMMOUNT PIC S9(10)V9(2).
            FD TRANSACTION-DETAILS.
                01 TRANSACTIONS.
                    05 TRANSACTION-NUMBER PIC 9(10).
                    05 TRANSACTION-DATE PIC 9(6).
                    05 TRANSACTION-ID PIC 9(8).
-                   05 TRANSACTION-AMMOUNT PIC 9(10).
+                   05 TRANSACTION-AMMOUNT PIC 9(10)V9(2).
                    05 TRANSACTION-SIGN PIC X(1).
        WORKING-STORAGE SECTION.
            01 WS-BANK-COMMAND PIC A(10).
@@ -64,15 +64,25 @@
                05 WS-READ-PASS-VALID PIC A(1).
                05 WS-READ-ACCOUNT-ID PIC 9(8).
       * Accoung manipulatioin
-           01 WS-DEPOSIT-AMMOUNT PIC 9(10).
-           01 WS-WITHDRAW-AMMOUNT PIC 9(10).
-           01 WS-ACCOUNT-VALUE PIC S9(10).
+           01 WS-DEPOSIT-AMMOUNT PIC 9(10)V9(2).
+           01 WS-WITHDRAW-AMMOUNT PIC 9(10)V9(2).
+           01 WS-ACCOUNT-VALUE PIC S9(10)V9(2).
            01 WS-ACCOUNT-INTEREST PIC 9(1) VALUE 1.
            01 WS-DELETE-CONFIRM PIC A(1).
       * Transaction display information
+           01 WS-EOF PIC 9(1).
+           01 WS-AUDIT-MONTH PIC 9(2).
            01 WS-TRANSACTION-DATE PIC 9(8).
            01 WS-TRANSACTION-TIME PIC 9(8).
            01 WS-TRANSACTION-DATE-DATA PIC 9(16).
+           01 WS-TRANSACTION-SUM PIC S9(10)V9(2).
+           01 WS-TRANSACTIONS.
+               05 WS-TRANSACTION-NUMBER PIC 9(10).
+               05 WS-TRANSACTION-YEAR PIC 9(4).
+               05 WS-TRANSACTION-MONTH PIC 9(2).
+               05 WS-TRANSACTION-ID PIC 9(8).
+               05 WS-TRANSACTION-AMMOUNT PIC 9(10)V9(2).
+               05 WS-TRANSACTION-SIGN PIC X(1).
       * Auto generate seed
            01 WS-CURRENT-DATE-DATA.
                05 WS-CURRENT-DATE.
@@ -241,17 +251,67 @@
                                    WS-ACCOUNT-VALUE
       * Monthly statement command
                            ELSE IF WS-BANK-COMMAND = "audit"
+                               MOVE 0
+                                   TO WS-EOF
+                               MOVE 0
+                                   TO WS-TRANSACTION-SUM
+                               DISPLAY "Enter a month to recieve an audi
+      -                        "t (enter the numeric value of the month)
+      -                        "..."
+                               ACCEPT WS-AUDIT-MONTH
                                MOVE READ-ACCOUNT-ID
                                    TO TRANSACTION-ID
                                OPEN INPUT TRANSACTION-DETAILS
+                                   START TRANSACTION-DETAILS KEY
+                                       IS EQUAL TO TRANSACTION-ID
+                                       INVALID KEY DISPLAY "No transacti
+      -                                "on history found for this user..
+      -                                "."
+                                   END-START
                                    READ TRANSACTION-DETAILS
-                                       INTO TRANSACTIONS
-                                   KEY IS TRANSACTION-ID
-                                   INVALID KEY DISPLAY "No transaction
-      -                            "history found for this user..."
-                                   NOT INVALID KEY DISPLAY TRANSACTIONS
+                                       AT END SET WS-EOF TO 1
                                    END-READ
+                                   PERFORM UNTIL WS-EOF IS EQUAL TO 1
+                                       MOVE TRANSACTIONS
+                                           TO WS-TRANSACTIONS
+                                       IF READ-ACCOUNT-ID IS EQUAL
+                                           TO TRANSACTION-ID
+                                           IF WS-TRANSACTION-SIGN = "+"
+                                               ADD
+                                                  WS-TRANSACTION-AMMOUNT
+                                                  TO WS-TRANSACTION-SUM
+                                           ELSE
+                                               SUBTRACT
+                                                 WS-TRANSACTION-AMMOUNT
+                                                 FROM WS-TRANSACTION-SUM
+                                           END-IF
+                                       END-IF
+                                       IF READ-ACCOUNT-ID IS EQUAL
+                                           TO TRANSACTION-ID
+                                           IF WS-AUDIT-MONTH IS EQUAL
+                                           TO WS-TRANSACTION-MONTH
+                                               DISPLAY
+                                                  WS-TRANSACTION-MONTH
+                                                  "-"WS-TRANSACTION-YEAR
+                                                   ": "
+                                                  WS-TRANSACTION-SIGN
+                                                  WS-TRANSACTION-AMMOUNT
+                                          END-IF
+                                       END-IF
+                                       READ TRANSACTION-DETAILS
+                                           AT END SET WS-EOF TO 1
+                                       END-READ
+                                   END-PERFORM
                                CLOSE TRANSACTION-DETAILS
+                               IF WS-AUDIT-MONTH IS EQUAL
+                                   TO WS-TRANSACTION-MONTH
+                                   DISPLAY "Ammount changed: "
+                                       WS-TRANSACTION-SUM
+                               ELSE IF WS-AUDIT-MONTH IS NOT EQUAL
+                                   TO WS-TRANSACTION-MONTH
+                                   DISPLAY "No transactions found for th
+      -                            "is month..."
+                               END-IF
       * Delete account command
                            ELSE IF WS-BANK-COMMAND = "delete"
                                DISPLAY "Are you sure you want to permina
