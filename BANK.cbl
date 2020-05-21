@@ -40,6 +40,7 @@
                01 BALANCES.
                    05 BALANCE-ID PIC 9(8).
                    05 BALANCE-AMMOUNT PIC S9(10)V9(2).
+                   05 INTEREST-MONTH PIC 9(2).
            FD TRANSACTION-DETAILS.
                01 TRANSACTIONS.
                    05 TRANSACTION-NUMBER PIC 9(10).
@@ -67,8 +68,12 @@
            01 WS-DEPOSIT-AMMOUNT PIC 9(10)V9(2).
            01 WS-WITHDRAW-AMMOUNT PIC 9(10)V9(2).
            01 WS-ACCOUNT-VALUE PIC S9(10)V9(2).
-           01 WS-ACCOUNT-INTEREST PIC 9(1) VALUE 1.
            01 WS-DELETE-CONFIRM PIC A(1).
+      * Interest update and add information
+           01 WS-ACCOUNT-INTEREST PIC 9(1) VALUE 1.
+           01 WS-INTEREST-PRECENT PIC 9(10)V9(2).
+           01 WS-INTEREST-TO-ADD PIC 9(10)V9(2).
+           01 WS-INTEREST-MONTHS-MISSED PIC S9(5).
       * Transaction display information
            01 WS-EOF PIC 9(1).
            01 WS-AUDIT-MONTH PIC 9(2).
@@ -245,6 +250,14 @@
                            ELSE IF WS-BANK-COMMAND = "interest"
                                DISPLAY "Your interest rate is: "
                                    WS-ACCOUNT-INTEREST"%"
+                               OPEN INPUT BALANCE-DETAILS
+                                   READ BALANCE-DETAILS INTO BALANCES
+                                   INVALID KEY DISPLAY "There is no mone
+      -                            "y to apply interest too..."
+                                   NOT INVALID KEY 
+                                       CLOSE BALANCE-DETAILS
+                                       PERFORM UPDATE-INTEREST
+                                   END-READ
       * Balance command
                            ELSE IF WS-BANK-COMMAND = "balance"
                                DISPLAY "Your current balance is: "
@@ -400,3 +413,40 @@
                        END-IF
                END-READ
                CLOSE ACCOUNT-DETAILS.
+      * Cross check the last month and current month and update interest         
+       UPDATE-INTEREST.
+           IF WS-BANK-COMMAND = "interest"
+               MOVE FUNCTION CURRENT-DATE TO WS-CURRENT-DATE-DATA
+               IF INTEREST-MONTH IS NOT EQUAL TO WS-CURRENT-MONTH
+                   SUBTRACT INTEREST-MONTH FROM WS-CURRENT-MONTH
+                       GIVING WS-INTEREST-MONTHS-MISSED
+                   IF WS-INTEREST-MONTHS-MISSED IS NEGATIVE
+                       ADD 12 TO WS-INTEREST-MONTHS-MISSED
+                   END-IF
+                   DIVIDE WS-ACCOUNT-INTEREST BY 100
+                       GIVING WS-INTEREST-PRECENT
+                   MULTIPLY WS-INTEREST-PRECENT BY WS-ACCOUNT-VALUE
+                       GIVING WS-INTEREST-TO-ADD
+                   MULTIPLY WS-INTEREST-TO-ADD 
+                       BY WS-INTEREST-MONTHS-MISSED
+                       GIVING WS-INTEREST-TO-ADD
+                   ADD WS-INTEREST-TO-ADD TO WS-ACCOUNT-VALUE
+                       GIVING WS-ACCOUNT-VALUE
+                   DISPLAY WS-INTEREST-TO-ADD" has been added to your ac
+      -            "count..."
+                   OPEN I-O BALANCE-DETAILS
+                       MOVE WS-CURRENT-MONTH TO INTEREST-MONTH
+                       REWRITE BALANCES
+                       INVALID KEY DISPLAY "Error: it appears you are no
+      -                "t logged in! Please contact support..."
+                       NOT INVALID KEY 
+                           DISPLAY "Interest information updated..."
+                       END-REWRITE
+                   CLOSE BALANCE-DETAILS
+                   MOVE 0 TO WS-INTEREST-PRECENT
+                   MOVE 0 TO WS-INTEREST-TO-ADD
+                   MOVE 0 TO WS-INTEREST-MONTHS-MISSED
+               ELSE 
+                   DISPLAY "Monthly interest has already been applied to
+      -             " this account..."
+               END-IF.
