@@ -4,4 +4,4 @@ The programs focus on different important aspects of programming and build on on
 
 The programs scale in difficulty with HELLO-WORLD.cbl being the simplest and BANK.cbl being the most complex
 
-The projects were written using OpenCobolIDE (formerly GNU Cobol)
+The projects were written using OpenCobolIDE version 4.7.3 (formerly GNU Cobol)
