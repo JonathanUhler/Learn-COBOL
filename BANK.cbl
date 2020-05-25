@@ -44,7 +44,7 @@
            FD TRANSACTION-DETAILS.
                01 TRANSACTIONS.
                    05 TRANSACTION-NUMBER PIC 9(10).
-                   05 TRANSACTION-DATE PIC 9(6).
+                   05 TRANSACTION-DATE PIC 9(8).
                    05 TRANSACTION-ID PIC 9(8).
                    05 TRANSACTION-AMMOUNT PIC 9(10)V9(2).
                    05 TRANSACTION-SIGN PIC X(1).
@@ -76,6 +76,7 @@
            01 WS-INTEREST-MONTHS-MISSED PIC S9(5).
       * Transaction display information
            01 WS-EOF PIC 9(1).
+           01 WS-AUDIT-YEAR PIC 9(4).
            01 WS-AUDIT-MONTH PIC 9(2).
            01 WS-TRANSACTION-DATE PIC 9(8).
            01 WS-TRANSACTION-TIME PIC 9(8).
@@ -85,6 +86,7 @@
                05 WS-TRANSACTION-NUMBER PIC 9(10).
                05 WS-TRANSACTION-YEAR PIC 9(4).
                05 WS-TRANSACTION-MONTH PIC 9(2).
+               05 WS-TRANSACTION-DAY PIC 9(2).
                05 WS-TRANSACTION-ID PIC 9(8).
                05 WS-TRANSACTION-AMMOUNT PIC 9(10)V9(2).
                05 WS-TRANSACTION-SIGN PIC X(1).
@@ -254,7 +256,7 @@
                                    READ BALANCE-DETAILS INTO BALANCES
                                    INVALID KEY DISPLAY "There is no mone
       -                            "y to apply interest too..."
-                                   NOT INVALID KEY 
+                                   NOT INVALID KEY
                                        CLOSE BALANCE-DETAILS
                                        PERFORM UPDATE-INTEREST
                                    END-READ
@@ -268,9 +270,13 @@
                                    TO WS-EOF
                                MOVE 0
                                    TO WS-TRANSACTION-SUM
+                               DISPLAY "Enter a year to recieve an audit
+      -                        " (enter the 4-digit value for the year).
+      -                        ".."
+                               ACCEPT WS-AUDIT-YEAR
                                DISPLAY "Enter a month to recieve an audi
-      -                        "t (enter the numeric value of the month)
-      -                        "..."
+      -                        "t (enter the 2-digit value for the month
+      -                        ")..."
                                ACCEPT WS-AUDIT-MONTH
                                MOVE READ-ACCOUNT-ID
                                    TO TRANSACTION-ID
@@ -303,7 +309,10 @@
                                            TO TRANSACTION-ID
                                            IF WS-AUDIT-MONTH IS EQUAL
                                            TO WS-TRANSACTION-MONTH
+                                           AND WS-AUDIT-YEAR IS EQUAL
+                                           TO WS-TRANSACTION-YEAR
                                                DISPLAY
+                                                  WS-TRANSACTION-DAY"-"
                                                   WS-TRANSACTION-MONTH
                                                   "-"WS-TRANSACTION-YEAR
                                                    ": "
@@ -318,12 +327,16 @@
                                CLOSE TRANSACTION-DETAILS
                                IF WS-AUDIT-MONTH IS EQUAL
                                    TO WS-TRANSACTION-MONTH
+                                   AND WS-AUDIT-YEAR IS EQUAL
+                                   TO WS-TRANSACTION-YEAR
                                    DISPLAY "Ammount changed: "
                                        WS-TRANSACTION-SUM
                                ELSE IF WS-AUDIT-MONTH IS NOT EQUAL
                                    TO WS-TRANSACTION-MONTH
+                                   OR WS-AUDIT-YEAR IS NOT EQUAL
+                                   TO WS-TRANSACTION-YEAR
                                    DISPLAY "No transactions found for th
-      -                            "is month..."
+      -                            "is time-frame..."
                                END-IF
       * Delete account command
                            ELSE IF WS-BANK-COMMAND = "delete"
@@ -413,7 +426,7 @@
                        END-IF
                END-READ
                CLOSE ACCOUNT-DETAILS.
-      * Cross check the last month and current month and update interest         
+      * Cross check the last month and current month and update interest
        UPDATE-INTEREST.
            IF WS-BANK-COMMAND = "interest"
                MOVE FUNCTION CURRENT-DATE TO WS-CURRENT-DATE-DATA
@@ -427,7 +440,7 @@
                        GIVING WS-INTEREST-PRECENT
                    MULTIPLY WS-INTEREST-PRECENT BY WS-ACCOUNT-VALUE
                        GIVING WS-INTEREST-TO-ADD
-                   MULTIPLY WS-INTEREST-TO-ADD 
+                   MULTIPLY WS-INTEREST-TO-ADD
                        BY WS-INTEREST-MONTHS-MISSED
                        GIVING WS-INTEREST-TO-ADD
                    ADD WS-INTEREST-TO-ADD TO WS-ACCOUNT-VALUE
@@ -439,14 +452,14 @@
                        REWRITE BALANCES
                        INVALID KEY DISPLAY "Error: it appears you are no
       -                "t logged in! Please contact support..."
-                       NOT INVALID KEY 
+                       NOT INVALID KEY
                            DISPLAY "Interest information updated..."
                        END-REWRITE
                    CLOSE BALANCE-DETAILS
                    MOVE 0 TO WS-INTEREST-PRECENT
                    MOVE 0 TO WS-INTEREST-TO-ADD
                    MOVE 0 TO WS-INTEREST-MONTHS-MISSED
-               ELSE 
+               ELSE
                    DISPLAY "Monthly interest has already been applied to
       -             " this account..."
                END-IF.
